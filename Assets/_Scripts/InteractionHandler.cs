@@ -9,25 +9,39 @@ namespace PlayerController
 {
     public class InteractionHandler : MonoBehaviour
     {
+
+
+        [Header("Interaction Settings")]
         [SerializeField] private float radius = .3f;
         [SerializeField] private float distance = 5f;
 
         [SerializeField] private TMP_Text text;
 
-        CustomTimer HoldTimer = null;
+        [Header("Interaction Input Action")]
+        [SerializeField] private InputAction InteractionAction;
+
+
+        #region Private Variables
         CustomUpdater CustomUpdate = null;
 
-        float lastTapTime = 0.0f;
-        int rapidTapsCount = 0;
-        float rapidTapCancelTime = 0.5f;
         bool currentlyInteracting = false;
-
 
         private Camera maincam;
         private IInteractable currentInteractingObject;
+        #endregion
         private void Awake()
         {
             maincam = Camera.main; //TODO - Change this to GamePlayStats GetActiveCamera();
+        }
+        private void OnEnable()
+        {
+            InteractionAction.started += InteractWithCurrentObject;
+            InteractionAction.canceled += InteractWithCurrentObject;
+        }
+        private void OnDisable()
+        {
+            InteractionAction.started -= InteractWithCurrentObject;
+            InteractionAction.canceled -= InteractWithCurrentObject;
         }
         void FixedUpdate()
         {
@@ -35,14 +49,25 @@ namespace PlayerController
         }
         void CheckForInteraction()
         {
-            if (!CanInteract()) return;
+            if (!CanInteract())
+            {
+                if (currentlyInteracting)
+                    StopInteracting();
+
+                return;
+            }
 
             if (Physics.SphereCast(maincam.transform.position, radius, maincam.transform.forward, out RaycastHit hit, distance))
             {
                 GameObject hitObject = hit.collider.gameObject;
 
-                if (hitObject.TryGetComponent(out Interactable.IInteractable interactable))
+                if (hitObject.TryGetComponent(out IInteractable interactable))
                 {
+                    if (!interactable.CanInteract())
+                    {
+                        return;
+                    }
+
                     if (currentInteractingObject == null)   // If not interacting with any object;
                     {
                         OnInteractObjectEnter(interactable);
@@ -76,105 +101,111 @@ namespace PlayerController
             {
                 interactable.Focus();
                 text.text = interactable.Label;
-                interactable.InteractionAction.action.performed += InteractWithCurrentObject;
-                interactable.InteractionAction.action.canceled += InteractWithCurrentObject;
 
-                //        InputHandler.Instance.FocusedWithInteractable(interactable);
-
-                //     CanvasItem.MoveToThisObject(currentInteractingObject.transform, interactable.ItemData.ItemName, "Good item");
+                SetActionInteraction(true);
             }
         }
         private void StopInteracting()
         {
             currentlyInteracting = false;
-            if (HoldTimer != null) CustomTimerManager.Instance.StopTimer(HoldTimer);
             if (CustomUpdate != null) CustomTimerManager.Instance.StopUpdate(CustomUpdate);
-            rapidTapsCount = 0;
 
+            currentInteractingObject?.UnFocus();
 
-            if (currentInteractingObject != null)
-            {
-                currentInteractingObject.InteractionAction.action.performed -= InteractWithCurrentObject;
-                currentInteractingObject.InteractionAction.action.canceled -= InteractWithCurrentObject;
-                currentInteractingObject.UnFocus();
-            }
             currentInteractingObject = null;
             text.text = "";
 
         }
 
+        void SetActionInteraction(bool Enter)
+        {
+            InteractionAction.Disable();
+            if (Enter)
+            {
+                switch (currentInteractingObject.Type)
+                {
+                    case InteractionType.SingleTap:
+                        InteractionAction.ChangeBinding(0).WithPath("<Keyboard>/E").WithInteraction("tap(duration=0.2)");
+                        break;
+
+                    case InteractionType.Hold:
+                        InteractionAction.ChangeBinding(0).WithPath("<Keyboard>/E").WithInteraction("hold(duration=2)");
+                        break;
+
+                    case InteractionType.RapidTaps:
+                        InteractionAction.ChangeBinding(0).WithPath("<Keyboard>/E").WithInteraction("multiTap(tapCount=3)");
+                        break;
+
+                    case InteractionType.Pull:
+                        InteractionAction.ChangeBinding(0).WithPath("<Mouse>/leftButton").WithInteraction("tap(duration=0.2)");
+                        break;
+                }
+                InteractionAction.Enable();
+            }
+        }
+
         void InteractWithCurrentObject(InputAction.CallbackContext ctx)
         {
-            //if (currentInteractingObject != null)
-            //    if (currentInteractingObject.TryGetComponent(out Interactable.IInteractable interactable))
-            //    {
-            //        interactable.Interact();
-            //    }
-
             if (currentInteractingObject == null) return;
 
             switch (currentInteractingObject.Type)
             {
                 case InteractionType.SingleTap:
 
-                    currentInteractingObject.OnInteractionComplete();
-
+                    CustomUpdate = CustomTimerManager.Instance.CreateUpdate(Time.fixedDeltaTime, () =>
+                    {
+                        float per = InteractionAction.GetTimeoutCompletionPercentage();
+                        Debug.Log(per);
+                        if (currentInteractingObject.OnInteractionUpdate(per))
+                        {
+                            StopInteracting();
+                        }
+                    });
                     break;
-
+                case InteractionType.RapidTaps:
                 case InteractionType.Hold:
-                    if (ctx.performed)
+                    if (ctx.started)
                     {
                         currentlyInteracting = true;
-                        HoldTimer = CustomTimerManager.Instance.CreateTimer(currentInteractingObject.MaxValue, () => currentInteractingObject.OnInteractionComplete());
+
+                        CustomUpdate = CustomTimerManager.Instance.CreateUpdate(Time.fixedDeltaTime, () =>
+                        {
+                            float per = InteractionAction.GetTimeoutCompletionPercentage();
+                            Debug.Log(per);
+                            if (currentInteractingObject.OnInteractionUpdate(per))
+                            {
+                                StopInteracting();
+                            }
+                        });
                     }
-                    else
+                    else if (ctx.canceled)
                     {
+                        currentInteractingObject.OnInteractionCancel();
                         StopInteracting();
                     }
                     break;
 
-                case InteractionType.RapidTaps:
-
-                    if (ctx.performed)
-                    {
-                        if (lastTapTime - Time.time > rapidTapCancelTime)
-                        {
-                            rapidTapsCount = 0;
-                        }
-
-                        lastTapTime = Time.time;
-                        rapidTapsCount++;
-                        currentInteractingObject.OnInteractionUpdate(rapidTapsCount);
-                        if (rapidTapsCount >= currentInteractingObject.MaxValue)
-                            currentInteractingObject.OnInteractionComplete();
-                    }
-                    break;
 
                 case InteractionType.Pull:
 
-                    if (ctx.performed)
+                    if (ctx.started)
                     {
                         currentlyInteracting = true;
                         InputHandler.Instance.TogglePlayerCamInput(false);
 
-                        CustomUpdate = CustomTimerManager.Instance.CreateUpdate(.01f, () =>
+                        CustomUpdate = CustomTimerManager.Instance.CreateUpdate(Time.fixedDeltaTime, () =>
                         {
-                            var mouse = InputHandler.Instance.GetMouse();
-                            var magnitude = mouse.magnitude;
-                            Debug.Log(magnitude);
-                            currentInteractingObject.OnInteractionUpdate(magnitude);
+                            if (currentInteractingObject.OnInteractionUpdate(InputHandler.Instance.GetMouse()))
+                            {
+                                InputHandler.Instance.TogglePlayerCamInput(true);
+                                StopInteracting();
+                            }
 
-                            //if (Mathf.Abs(magnitude) >= currentInteractingObject.MaxValue)
-                            //{
-                            //    InputHandler.Instance.TogglePlayerCamInput(true);
-                            //    StopInteracting();
-                            //    currentInteractingObject.OnInteractionComplete();
-                            //}
-
-                        }, false);
+                        }, true);
                     }
-                    else
+                    else if (ctx.canceled)
                     {
+                        currentInteractingObject.OnInteractionCancel();
                         InputHandler.Instance.TogglePlayerCamInput(true);
                         StopInteracting();
                     }

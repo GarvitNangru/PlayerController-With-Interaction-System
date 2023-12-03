@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 2159.345, g: 2264.8694, b: 3292.5747, a: 1}
+  m_IndirectSpecularColor: {r: 2158.304, g: 2262.8616, b: 3286.4536, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -917,11 +917,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 40a87ef928801494fbc422b5af9361b5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  interactionAction: {fileID: 7674292743102196866, guid: c73ec5c3d298e2747b80851cb2b3e60d,
-    type: 3}
   interactionType: 2
   maxValue: 5
   label: taps
+  multiUse: 0
 --- !u!65 &553456612
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -6595,11 +6594,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 40a87ef928801494fbc422b5af9361b5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  interactionAction: {fileID: -168913125110745181, guid: c73ec5c3d298e2747b80851cb2b3e60d,
-    type: 3}
   interactionType: 1
-  maxValue: 2
+  maxValue: 1
   label: Hold
+  multiUse: 0
 --- !u!65 &891399057
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -6883,11 +6881,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 40a87ef928801494fbc422b5af9361b5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  interactionAction: {fileID: 7674292743102196866, guid: c73ec5c3d298e2747b80851cb2b3e60d,
-    type: 3}
   interactionType: 3
-  maxValue: 20
+  maxValue: 924.09
   label: pull
+  multiUse: 0
 --- !u!65 &1508381231
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -11427,6 +11424,23 @@ MonoBehaviour:
   radius: 0.3
   distance: 5
   text: {fileID: 1932971629}
+  InteractionAction:
+    m_Name: Interaction
+    m_Type: 0
+    m_ExpectedControlType: 
+    m_Id: 1d0e5069-2361-4e4a-ba86-7ea4a4cfabfb
+    m_Processors: 
+    m_Interactions: 
+    m_SingletonActionBindings:
+    - m_Name: 
+      m_Id: 72b79ab9-806f-4e2d-987f-f0721a5c1f48
+      m_Path: <Keyboard>/e
+      m_Interactions: 
+      m_Processors: 
+      m_Groups: 
+      m_Action: Interaction
+      m_Flags: 0
+    m_Flags: 0
 --- !u!4 &8700783699233626960
 Transform:
   m_ObjectHideFlags: 0

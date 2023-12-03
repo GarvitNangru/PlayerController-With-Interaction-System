@@ -1,23 +1,21 @@
+using CustomTimers;
 using UnityEngine;
-using UnityEngine.InputSystem;
 using Utils.Extensions;
 
 namespace PlayerController.Interactable
 {
     public class InteractableExample : MonoBehaviour, IInteractable
     {
-
-        [SerializeField] private InputActionReference interactionAction;
         [SerializeField] private InteractionType interactionType;
         [SerializeField] private float maxValue;
         [SerializeField] private string label;
         [SerializeField] private bool multiUse = false;
         public InteractionType Type => interactionType;
         public float MaxValue => maxValue;
+        public float Value { get; private set; }
         public string Label => label;
-
-        public InputActionReference InteractionAction => interactionAction;
-
+        public bool IsInteractionCompleted { get; private set; }
+        public bool IsOnceInteracted { get; private set; }
         public bool IsMultiUse => multiUse;
 
         public void Focus()
@@ -30,28 +28,40 @@ namespace PlayerController.Interactable
             Debug.Log($"UnFocused {gameObject.name.ToColor("black")}");
         }
 
-        public bool OnInteractionUpdate(float value)
+        public bool OnInteractionUpdate(float percentage)
         {
             switch (interactionType)
             {
                 case InteractionType.RapidTaps:
-
-                    transform.localScale = Vector3.one + new Vector3(value / 10, value / 10, value / 10);
-
+                    transform.localScale = Vector3.one + new Vector3(percentage / 10, percentage / 10, percentage / 10);
+                    Value += percentage;
                     break;
 
-                case InteractionType.Pull:
-
-                    // Adjust rotation based on the distance
-                    float rotationAmount = value * 1;
-
-                    // Apply the rotation to the object
-                    transform.Rotate(0f, rotationAmount, 0f);
-
-                    break;
 
                 case InteractionType.Hold:
+                    Value += percentage;
+                    break;
 
+                case InteractionType.SingleTap:
+
+                    Value = percentage;
+
+                    break;
+            }
+
+
+            return OnInteractionComplete();
+        }
+        public bool OnInteractionUpdate(Vector2 mouseInput)
+        {
+            switch (interactionType)
+            {
+                case InteractionType.Pull:
+
+                    float rotationAmount = mouseInput.sqrMagnitude * 1;
+                    transform.Rotate(0f, rotationAmount, 0f);
+
+                    Value += mouseInput.sqrMagnitude;
                     break;
             }
 
@@ -73,16 +83,33 @@ namespace PlayerController.Interactable
 
         public bool CanInteract()
         {
-            return false;
+            return multiUse || (!IsOnceInteracted);
         }
 
         public bool OnInteractionComplete()
         {
-            Debug.Log("Interaction Complete");
+            if (Value >= MaxValue)
+            {
+                IsOnceInteracted = true;
+                IsInteractionCompleted = true;
+                if (IsMultiUse)
+                {
+                    ResetInteraction();
+                }
+                Debug.LogError("Interaction Completed");
 
-            gameObject.SetActive(false);
+                return true;
+            }
+            return false;
+        }
 
-            return true;
+        public void ResetInteraction()
+        {
+            CustomTimerManager.Instance.CreateTimer(2.0f, () =>
+            {
+                IsInteractionCompleted = false;
+                Value = 0f;
+            });
         }
     }
 }

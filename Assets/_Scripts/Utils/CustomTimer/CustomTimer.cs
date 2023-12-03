@@ -16,6 +16,8 @@ namespace CustomTimers
         internal Action<float> OnUpdateCallback;
         internal Action OnTimerStoppedCallback;
 
+        public bool IsTimerRunning { get { return timerRunning; } }
+
         /// <summary>
         /// Starts a timer with the specified duration and callbacks.
         /// </summary>
@@ -94,6 +96,9 @@ namespace CustomTimers
 
         internal Action OnUpdateCallback = null;
         internal Action OnUpdateStopped = null;
+
+        public bool IsUpdateRunning { get { return updaterRunning; } }
+
         /// <summary>
         /// Starts the custom update with the specified update rate and callbacks.
         /// </summary>

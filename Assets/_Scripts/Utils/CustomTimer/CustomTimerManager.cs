@@ -60,7 +60,10 @@ namespace CustomTimers
         {
             if (recyclable && _customUpdates.TryGetValue(updateRate, out CustomUpdater customUpdate))
             {
-                customUpdate.OnUpdateCallback += onUpdate;
+                if (!customUpdate.IsUpdateRunning)
+                    customUpdate.Start(updateRate, onUpdate);
+                else
+                    customUpdate.OnUpdateCallback += onUpdate;
 
                 return customUpdate;
             }
@@ -157,6 +160,7 @@ namespace CustomTimers
 
             newCustomTimer.OnTimerStoppedCallback += () =>
             {
+                newCustomTimer.OnTimerStoppedCallback = null;
                 _customUpdates.TryRemove(duration, out _);
                 GenericPool<CustomTimer>.Release(newCustomTimer);
             };
